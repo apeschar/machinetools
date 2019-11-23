@@ -15,5 +15,10 @@ zfs create "$zfs_name"
 
 debootstrap buster "$root"
 
+tee "$root/etc/network/interfaces.d/host0" <<EOF
+auto host0
+iface host0 inet dhcp
+EOF
+
 systemd-nspawn --machine="$machine" -U apt update
 systemd-nspawn --machine="$machine" -U apt install -y dbus
