@@ -1,0 +1,35 @@
+#!/bin/bash
+
+set -euo pipefail
+
+if [[ $# -ne 1 ]]; then
+	echo "Usage: $0 <name>" >&2
+	exit 1
+fi
+
+name="$1"
+root="/var/lib/machines/$name"
+debian_release="buster"
+
+if [[ ! -d $root ]]; then
+	zfs create "rpool$root"
+fi
+
+if [[ ! -d $root/usr ]]; then
+	debootstrap "$debian_release" "$root"
+fi
+
+cat >"$root/etc/resolv.conf" <<EOF
+nameserver 1.1.1.1
+nameserver 8.8.8.8
+nameserver 8.8.4.4
+EOF
+
+systemd-nspawn -D "$root" --private-users=pick --settings=false bash -euo pipefail <<EOF
+	apt update
+	apt install -y dbus openssh-server
+	mkdir ~/.ssh
+	chmod 700 ~/.ssh
+	echo $(printf %q "$(cat ~/.ssh/authorized_keys)") > ~/.ssh/authorized_keys
+	chmod 600 ~/.ssh/authorized_keys
+EOF

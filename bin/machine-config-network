@@ -1,0 +1,37 @@
+#!/bin/bash
+
+set -euo pipefail
+
+if [[ $# -ne 1 ]]; then
+	echo "Usage: $0 <name>" >&2
+	exit 1
+fi
+
+name="$1"
+root="/var/lib/machines/$name"
+file="$root/etc/network/interfaces.d/iv-eth0"
+
+echo "Paste the IP address, gateway and netmask (in that order):" >&2
+
+ips=( $(grep -oP '\b(?:(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\b') )
+
+if [[ ${#ips[@]} -lt 3 ]]; then
+	echo "Error: Expected at least 3 IP addresses in input." >&2
+	exit 1
+fi
+
+ip="${ips[0]}"
+gateway="${ips[1]}"
+netmask="${ips[2]}"
+
+netmask_bits="$(ipcalc -b "$ip/$netmask" | grep -Po '^Netmask:.* = \K\d+')"
+
+cat > "$file" <<EOF
+auto iv-eth0
+iface iv-eth0 inet static
+	address $ip/$netmask_bits
+	gateway $gateway
+EOF
+
+echo "$file:" >&2
+cat "$file"
